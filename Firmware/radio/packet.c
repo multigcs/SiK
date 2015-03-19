@@ -37,6 +37,7 @@
 #include "packet.h"
 #include "timer.h"
 #include "serial.h"
+#include "freq_hopping.h"
 
 static __bit last_sent_is_resend;
 static __bit last_sent_is_injected;
@@ -77,10 +78,18 @@ bool seen_mavlink;
 // monitoring of link quality
 static void check_heartbeat(__xdata uint8_t * __pdata buf)
 {
-        if (buf[0] == MAVLINK10_STX &&
-            buf[1] == 9 && buf[5] == 0) {
+	if (buf[0] == MAVLINK10_STX &&
+		buf[1] == 9 && buf[5] == 0) {
 		// looks like a MAVLink 1.0 heartbeat
 		seen_mavlink = true;
+	}
+	if (buf[0] == MAVLINK10_STX && buf[1] == 2 && buf[5] == 222) {
+		// looks like a MAVLink 1.0 set_netid
+		__xdata uint16_t netid = (uint16_t)buf[7]<<8 | buf[6];
+		if (param_set(PARAM_NETID, netid)) {
+			radio_set_network_id(param_get(PARAM_NETID));
+			fhop_init(param_get(PARAM_NETID));
+		}
 	}
 }
 
